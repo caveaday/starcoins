@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Precious Metals Dashboard (Metals.Dev)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; background:#f6f8fb; margin:0; padding:20px; }
+    h1 { text-align:center; margin-bottom:20px; }
+    .dashboard { display:flex; flex-wrap:wrap; gap:20px; justify-content:center; }
+    .card { background:#fff; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.08);
+            padding:20px; width:260px; text-align:center; }
+    .title { font-size:1.1em; font-weight:700; color:#555; margin-bottom:8px; }
+    .price { font-size:1.8em; font-weight:800; margin:8px 0; }
+    .note { font-size:0.9em; color:#666; margin:2px 0; }
+    .updated { text-align:center; margin-top:20px; color:#777; font-size:0.9em; }
+    button { display:block; margin:10px auto; padding:8px 14px; border:1px solid #ddd; border-radius:8px;
+             background:#fff; cursor:pointer; }
+    button:hover { background:#f3f4f6; }
+  </style>
+</head>
+<body>
+  <h1>Live Precious Metals (Bid / Ask / Spot)</h1>
+  <div class="dashboard">
+    <div class="card">
+      <div class="title">Gold (XAU)</div>
+      <div class="price" id="goldPrice">—</div>
+      <div class="note" id="goldBid">Bid: —</div>
+      <div class="note" id="goldAsk">Ask: —</div>
+    </div>
+    <div class="card">
+      <div class="title">Silver (XAG)</div>
+      <div class="price" id="silverPrice">—</div>
+      <div class="note" id="silverBid">Bid: —</div>
+      <div class="note" id="silverAsk">Ask: —</div>
+    </div>
+    <div class="card">
+      <div class="title">Platinum (XPT)</div>
+      <div class="price" id="platinumPrice">—</div>
+      <div class="note" id="platinumBid">Bid: —</div>
+      <div class="note" id="platinumAsk">Ask: —</div>
+    </div>
+    <div class="card">
+      <div class="title">Palladium (XPD)</div>
+      <div class="price" id="palladiumPrice">—</div>
+      <div class="note" id="palladiumBid">Bid: —</div>
+      <div class="note" id="palladiumAsk">Ask: —</div>
+    </div>
+  </div>
+
+  <div class="updated" id="lastUpdated">Last updated: —</div>
+  <button onclick="refresh()">Refresh Now</button>
+
+  <script>
+    const API_KEY = "BDDDNEYA2DC9M4W0HPGC423W0HPGC"; // ← replace with your Metals.Dev key
+    const BASE_URL = "https://api.metals.dev/v1/metal/spot";
+
+    const metals = [
+      { name: "gold", label: "Gold", id: "gold" },
+      { name: "silver", label: "Silver", id: "silver" },
+      { name: "platinum", label: "Platinum", id: "platinum" },
+      { name: "palladium", label: "Palladium", id: "palladium" },
+    ];
+
+    function fmtUSD(x) {
+      if (x == null || isNaN(x)) return "—";
+      return x.toLocaleString(undefined, { style: "currency", currency: "USD", minimumFractionDigits: 2 });
+    }
+
+    async function fetchMetal(metal) {
+      const url = `${BASE_URL}?api_key=${API_KEY}&metal=${metal}&currency=USD&unit=toz`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.status !== "success") throw new Error(data.error_message || "API error");
+      return data;
+    }
+
+    async function refresh() {
+      try {
+        const results = await Promise.all(metals.map(m => fetchMetal(m.name)));
+
+        results.forEach((data, idx) => {
+          const metal = metals[idx].id;
+          const rate = data.rate;
+          document.getElementById(`${metal}Price`).textContent = fmtUSD(rate.price);
+          document.getElementById(`${metal}Bid`).textContent = `Bid: ${fmtUSD(rate.bid)}`;
+          document.getElementById(`${metal}Ask`).textContent = `Ask: ${fmtUSD(rate.ask)}`;
+        });
+
+        document.getElementById("lastUpdated").textContent =
+          "Last updated: " + new Date().toLocaleString();
+      } catch (err) {
+        console.error("Error fetching prices:", err);
+        document.getElementById("lastUpdated").textContent =
+          "Error fetching data: " + err.message;
+      }
+    }
+
+    // Initial load + auto-refresh every 60s
+    refresh();
+    setInterval(refresh, 60000);
+  </script>
+</body>
+</html>

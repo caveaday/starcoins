@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Live Precious Metals — Metals.Dev</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root {
+      --bg: #f6f8fb; --card: #ffffff; --ink: #0f172a; --muted: #64748b;
+      --ring: #e2e8f0; --shadow: 0 8px 28px rgba(0,0,0,.08);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: var(--bg); color: var(--ink); }
+    header { padding: 28px 16px 10px; text-align: center; }
+    h1 { margin: 0 0 6px; font-size: clamp(20px, 3vw, 28px); }
+    .sub { color: var(--muted); font-size: 14px; }
+    .controls { display: flex; gap: 10px; justify-content: center; align-items: center; padding: 10px 16px 20px; color: var(--muted); }
+    select, button {
+      border: 1px solid var(--ring); background: #fff; border-radius: 10px; padding: 8px 10px;
+      font: inherit; cursor: pointer;
+    }
+    button:hover { background: #f3f4f6; }
+    .wrap { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; padding: 0 16px 32px; }
+    .card {
+      width: 240px; background: var(--card); border-radius: 16px; padding: 22px; box-shadow: var(--shadow); text-align: center;
+      border: 1px solid var(--ring);
+    }
+    .title { color: var(--muted); font-weight: 700; font-size: 12px; letter-spacing: .35px; text-transform: uppercase; }
+    .price { font-size: 36px; font-weight: 800; margin: 10px 0 2px; line-height: 1.1; }
+    .note { font-size: 12px; color: var(--muted); }
+    .foot { text-align: center; color: var(--muted); font-size: 13px; padding-bottom: 24px; }
+    .err { color: #b91c1c; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Star Coins - Live Spot for Metals</h1>
+    <div class="sub">Data from Metals.Dev (USD / toz)</div>
+  </header>
+
+  <div class="controls">
+    <label>Unit:
+      <select id="unit">
+        <option value="toz" selected>Troy Ounce (toz)</option>
+        <option value="g">Gram (g)</option>
+        <option value="kg">Kilogram (kg)</option>
+      </select>
+    </label>
+    <button id="refreshBtn">Refresh</button>
+    <span id="status" class="sub"></span>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      <div class="title">Gold (XAU)</div>
+      <div class="price" id="gold">—</div>
+      <div class="note" id="goldNote"></div>
+    </div>
+
+    <div class="card">
+      <div class="title">Silver (XAG)</div>
+      <div class="price" id="silver">—</div>
+      <div class="note" id="silverNote"></div>
+    </div>
+
+    <div class="card">
+      <div class="title">Platinum (XPT)</div>
+      <div class="price" id="platinum">—</div>
+      <div class="note" id="platinumNote"></div>
+    </div>
+
+    <div class="card">
+      <div class="title">Palladium (XPD)</div>
+      <div class="price" id="palladium">—</div>
+      <div class="note" id="palladiumNote"></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span id="updated">Last updated: —</span>
+  </div>
+
+  <script>
+    // 👉 Insert your Metals.Dev API key here:
+    const API_KEY = "BDDDNEYA2DC9M4W0HPGC423W0HPGC";
+
+    // Base endpoint (returns all metals in one call)
+    // Docs: https://api.metals.dev/v1/latest?api_key=...&currency=USD&unit=toz
+    const BASE_URL = "https://api.metals.dev/v1/latest";
+
+    const els = {
+      gold: document.getElementById("gold"),
+      silver: document.getElementById("silver"),
+      platinum: document.getElementById("platinum"),
+      palladium: document.getElementById("palladium"),
+      goldNote: document.getElementById("goldNote"),
+      silverNote: document.getElementById("silverNote"),
+      platinumNote: document.getElementById("platinumNote"),
+      palladiumNote: document.getElementById("palladiumNote"),
+      updated: document.getElementById("updated"),
+      status: document.getElementById("status"),
+      unit: document.getElementById("unit"),
+      refreshBtn: document.getElementById("refreshBtn"),
+    };
+
+    function fmtUSD(n) {
+      if (n == null || isNaN(n)) return "—";
+      return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 3 });
+    }
+
+    function setRow(name, value, unit) {
+      els[name].textContent = fmtUSD(value);
+      const noteEl = els[name + "Note"];
+      noteEl.textContent = unit ? `per ${unit}` : "";
+    }
+
+    async function fetchPrices() {
+      const unit = els.unit.value;
+      els.status.textContent = "Fetching…";
+      try {
+        const url = `${BASE_URL}?api_key=${encodeURIComponent(API_KEY)}&currency=USD&unit=${encodeURIComponent(unit)}`;
+        const res = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        if (data.status !== "success") {
+          throw new Error(data.error_message || "API error");
+        }
+
+        const m = data.metals || {};
+        setRow("gold", m.gold, unit);
+        setRow("silver", m.silver, unit);
+        setRow("platinum", m.platinum, unit);
+        setRow("palladium", m.palladium, unit);
+
+        const ts = data.timestamp ? new Date(data.timestamp) : new Date();
+        els.updated.textContent = `Timestamp: ${ts.toLocaleString()} • Local time: ${new Date().toLocaleTimeString()}`;
+        els.status.textContent = "";
+      } catch (err) {
+        els.status.innerHTML = `<span class="err">Error: ${err.message}</span>`;
+      }
+    }
+
+    // Events
+    els.refreshBtn.addEventListener("click", fetchPrices);
+    els.unit.addEventListener("change", fetchPrices);
+
+    // Initial load + auto refresh every 60s
+    fetchPrices();
+    setInterval(fetchPrices, 60000);
+  </script>
+</body>
+</html>

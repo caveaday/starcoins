@@ -224,7 +224,7 @@
       });
       if (timestamps.length) {
         const latest = new Date(Math.max(...timestamps.map(t => t.getTime())));
-        els.updated.textContent = `Timestamp (latest): <b>${latest.toLocaleString()}</b>`;
+        els.updated.innerHTML = `Timestamp (latest): <b>${latest.toLocaleString()}</b>`;
       } else {
         els.updated.textContent = "No data";
       }
@@ -236,5 +236,6 @@
   </script>
 </body>
 </html>
+
 
 

@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>VP/Senior Transformation Job Finder</title>
+<!-- Tailwind (via CDN) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Chart.js (for the summary chart) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji"; }
+  .card { @apply bg-white shadow-sm rounded-2xl border border-gray-100; }
+  .btn  { @apply px-4 py-2 rounded-xl border border-gray-300 hover:border-gray-400 active:scale-[.98] transition; }
+  .pill { @apply text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700; }
+  .badge { @apply text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700; }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <div class="max-w-6xl mx-auto p-4 md:p-8">
+    <header class="mb-6">
+      <h1 class="text-2xl md:text-3xl font-bold">VP/Senior Transformation Job Finder</h1>
+      <p class="text-sm text-slate-600 mt-1">Search LinkedIn, Indeed, and other sources for roles matching: <span class="font-semibold">“transformation quality vp senior”</span>.</p>
+    </header>
+
+    <!-- Controls -->
+    <section class="card p-4 md:p-6 mb-6">
+      <div class="grid md:grid-cols-4 gap-4">
+        <div class="md:col-span-2">
+          <label class="block text-sm font-semibold mb-1">Keywords</label>
+          <input id="kw" type="text" class="w-full rounded-xl border border-gray-300 px-3 py-2"
+                 value="transformation quality vp senior" />
+          <div class="text-xs text-slate-500 mt-1">Use quotes for exact phrases, e.g., <code>"digital transformation" vp</code></div>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Location (optional)</label>
+          <input id="loc" type="text" class="w-full rounded-xl border border-gray-300 px-3 py-2" placeholder="e.g., Chicago, IL or Remote" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Max Results</label>
+          <input id="limit" type="number" min="10" max="200" step="10" value="50"
+                 class="w-full rounded-xl border border-gray-300 px-3 py-2" />
+        </div>
+      </div>
+
+      <!-- Provider Keys -->
+      <div class="grid md:grid-cols-3 gap-4 mt-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1">SerpAPI Key (for LinkedIn/Google Jobs)</label>
+          <input id="serpKey" type="password" class="w-full rounded-xl border border-gray-300 px-3 py-2" placeholder="sk_live_..." />
+          <div class="text-xs text-slate-500 mt-1">Enables LinkedIn Jobs via SerpAPI.</div>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">RapidAPI Key (JSearch)</label>
+          <input id="rapidKey" type="password" class="w-full rounded-xl border border-gray-300 px-3 py-2" placeholder="your-rapidapi-key" />
+          <div class="text-xs text-slate-500 mt-1">Enables Indeed/others via JSearch.</div>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">CSV Fallback (optional)</label>
+          <input id="csvFile" type="file" accept=".csv" class="w-full rounded-xl border border-gray-300 px-3 py-2" />
+          <div class="text-xs text-slate-500 mt-1">Headers: <code>title,company,location,site,compensation,url</code></div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 mt-4">
+        <button id="searchBtn" class="btn bg-black text-white border-black">Search</button>
+        <button id="clearBtn" class="btn">Clear</button>
+        <span id="status" class="text-sm text-slate-600"></span>
+      </div>
+    </section>
+
+    <!-- Summary -->
+    <section class="grid md:grid-cols-3 gap-6 mb-6">
+      <div class="card p-4">
+        <div class="text-sm text-slate-500">Total Results</div>
+        <div id="totalCount" class="text-3xl font-bold mt-1">0</div>
+        <div id="sourceBadges" class="flex flex-wrap gap-2 mt-2"></div>
+      </div>
+      <div class="card p-4 md:col-span-2">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-sm text-slate-500">Results by Source</div>
+            <div class="text-xs text-slate-500">Counts per site (deduped by URL)</div>
+          </div>
+          <button id="downloadBtn" class="btn">Download CSV</button>
+        </div>
+        <canvas id="chart" class="mt-3"></canvas>
+      </div>
+    </section>
+
+    <!-- Table -->
+    <section class="card overflow-hidden">
+      <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+        <div class="font-semibold">Listings</div>
+        <input id="filterInput" placeholder="Filter by company/title/location…" class="rounded-xl border border-gray-300 px-3 py-2 text-sm w-72" />
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm" id="resultsTable">
+          <thead class="bg-slate-100/70">
+            <tr>
+              <th class="text-left p-3">Position</th>
+              <th class="text-left p-3">Company</th>
+              <th class="text-left p-3">Location</th>
+              <th class="text-left p-3">Site</th>
+              <th class="text-left p-3">Compensation</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="text-xs text-slate-500 mt-6">
+      <p><span class="font-semibold">Note:</span> LinkedIn and Indeed block direct browser scraping and often require APIs. This page uses SerpAPI (for LinkedIn/Google Jobs) and the JSearch API on RapidAPI to comply with CORS and site terms. If you don’t provide keys, use the CSV upload to test the UI.</p>
+    </footer>
+  </div>
+
+<script>
+/** =========================
+ * Utility / Types
+ * ========================= */
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const q = (sel) => document.querySelector(sel);
+const byId = (id) => document.getElementById(id);
+
+function sanitize(str) { return (str ?? "").toString().trim(); }
+function dedupeByUrl(items) {
+  const seen = new Set();
+  return items.filter(x => {
+    const url = (x.url || "").split("?")[0];
+    if (!url || seen.has(url)) return false;
+    seen.add(url);
+    return true;
+  });
+}
+
+function toCsv(rows) {
+  const header = ["title","company","location","site","compensation","url"];
+  const lines = [header.join(",")];
+  rows.forEach(r => {
+    const vals = header.map(h => {
+      const v = (r[h] ?? "").toString().replaceAll('"','""');
+      return `"${v}"`;
+    });
+    lines.push(vals.join(","));
+  });
+  return lines.join("\n");
+}
+
+function download(filename, content, type="text/csv") {
+  const blob = new Blob([content], {type});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/** =========================
+ * Providers (Adapters)
+ * ========================= */
+
+/* SerpAPI – LinkedIn Jobs + Google Jobs
+ * Docs: https://serpapi.com/
+ * Note: Requires a SerpAPI key. We query two engines for broader coverage:
+ *  - engine=google_jobs
+ *  - engine=linkedin_jobs
+ */
+async function searchSerpAPI({ apiKey, query, location, limit }) {
+  if (!apiKey) return [];
+  const paramsGoogle = new URLSearchParams({
+    engine: "google_jobs",
+    q: query + (location ? ` location:${location}` : ""),
+    hl: "en",
+    api_key: apiKey
+  });
+
+  const paramsLinkedIn = new URLSearchParams({
+    engine: "linkedin_jobs",
+    q: query,
+    location: location || "",
+    api_key: apiKey
+  });
+
+  const endpoints = [
+    `https://serpapi.com/search.json?${paramsGoogle.toString()}`,
+    `https://serpapi.com/search.json?${paramsLinkedIn.toString()}`
+  ];
+
+  const results = [];
+  for (const url of endpoints) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("SerpAPI error");
+      const data = await res.json();
+      // Normalize Google Jobs
+      if (data.jobs_results && Array.isArray(data.jobs_results)) {
+        for (const j of data.jobs_results.slice(0, limit)) {
+          results.push({
+            title: sanitize(j.title),
+            company: sanitize(j.company_name),
+            location: sanitize(j.location),
+            site: "Google Jobs (various)",
+            compensation: sanitize(j.detected_extensions?.salary ?? ""),
+            url: sanitize(j.related_links?.[0]?.link || j.apply_options?.[0]?.link || j.job_id ? `https://www.google.com/search?igu=1&q=${encodeURIComponent(j.title + " " + (j.company_name||""))}` : "")
+          });
+        }
+      }
+      // Normalize LinkedIn Jobs
+      if (data.jobs && Array.isArray(data.jobs)) {
+        for (const j of data.jobs.slice(0, limit)) {
+          results.push({
+            title: sanitize(j.title),
+            company: sanitize(j.company),
+            location: sanitize(j.location),
+            site: "LinkedIn",
+            compensation: sanitize(j.salary ?? ""),
+            url: sanitize(j.link)
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("SerpAPI fetch failed:", e);
+    }
+    await sleep(200); // gentle pacing
+  }
+  return results;
+}
+
+/* RapidAPI – JSearch
+ * Docs: https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch
+ * Note: Requires RapidAPI key; often includes Indeed/ZipRecruiter sources.
+ */
+async function searchJSearch({ apiKey, query, location, limit }) {
+  if (!apiKey) return [];
+  const url = `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query + (location ? ` in ${location}` : ""))}&page=1&num_pages=${Math.ceil(limit/10)}&date_posted=all`;
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "X-RapidAPI-Key": apiKey,
+        "X-RapidAPI-Host": "jsearch.p.rapidapi.com"
+      }
+    });
+    if (!res.ok) throw new Error("JSearch error");
+    const data = await res.json();
+    const out = [];
+    (data.data || []).forEach(j => {
+      out.push({
+        title: sanitize(j.job_title),
+        company: sanitize(j.employer_name),
+        location: sanitize(j.job_city ? `${j.job_city}, ${j.job_state || ""}`.trim().replace(/,\s*$/,"") : (j.job_country || "")),
+        site: sanitize(j.job_posted_at_timestamp ? (j.job_publisher || "JSearch") : (j.job_publisher || "JSearch")),
+        compensation: sanitize(j.job_salary_currency && (j.job_min_salary || j.job_max_salary)
+          ? `${j.job_salary_currency} ${j.job_min_salary || ""}–${j.job_max_salary || ""}`.replace(/–$/,"")
+          : (j.job_highlights?.Salary?.[0] || "")),
+        url: sanitize(j.job_apply_link || j.job_apply_links?.[0] || j.job_google_link || "")
+      });
+    });
+    return out.slice(0, limit);
+  } catch (e) {
+    console.warn("JSearch fetch failed:", e);
+    return [];
+  }
+}
+
+/** CSV Fallback */
+async function parseCsvFile(file) {
+  const text = await file.text();
+  const [headerLine, ...lines] = text.split(/\r?\n/).filter(Boolean);
+  const headers = headerLine.split(",").map(h => h.trim().toLowerCase());
+  const idx = (h) => headers.indexOf(h);
+  return lines.map(line => {
+    // naive CSV; handles quoted commas minimally
+    const cols = [];
+    let cur = "", inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"' ) {
+        if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+        else inQ = !inQ;
+      } else if (ch === ',' && !inQ) {
+        cols.push(cur); cur = "";
+      } else cur += ch;
+    }
+    cols.push(cur);
+    const get = (name) => sanitize(cols[idx(name)]);
+    return {
+      title: get("title"),
+      company: get("company"),
+      location: get("location"),
+      site: get("site"),
+      compensation: get("compensation"),
+      url: get("url")
+    };
+  });
+}
+
+/** =========================
+ * UI Logic
+ * ========================= */
+let state = { rows: [], filtered: [], chart: null };
+
+function renderBadges(rows) {
+  const bySite = {};
+  rows.forEach(r => bySite[r.site] = (bySite[r.site] || 0) + 1);
+  const frag = document.createDocumentFragment();
+  Object.entries(bySite).sort((a,b)=>b[1]-a[1]).forEach(([site, n]) => {
+    const span = document.createElement("span");
+    span.className = "badge";
+    span.textContent = `${site}: ${n}`;
+    frag.appendChild(span);
+  });
+  byId("sourceBadges").innerHTML = "";
+  byId("sourceBadges").appendChild(frag);
+}
+
+function renderTable(rows) {
+  const tbody = byId("tbody");
+  tbody.innerHTML = "";
+  rows.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.className = "border-b border-gray-100 hover:bg-slate-50";
+    tr.innerHTML = `
+      <td class="p-3">
+        <a href="${r.url || '#'}" target="_blank" class="font-semibold hover:underline">${r.title || "-"}</a>
+        <div class="text-xs text-slate-500">${r.url ? new URL(r.url).hostname : ""}</div>
+      </td>
+      <td class="p-3">${r.company || "-"}</td>
+      <td class="p-3">${r.location || "-"}</td>
+      <td class="p-3"><span class="pill">${r.site || "-"}</span></td>
+      <td class="p-3">${r.compensation || "-"}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderChart(rows) {
+  const ctx = byId("chart");
+  const counts = {};
+  rows.forEach(r => counts[r.site] = (counts[r.site] || 0) + 1);
+  const labels = Object.keys(counts);
+  const data = labels.map(l => counts[l]);
+
+  if (state.chart) { state.chart.destroy(); }
+  state.chart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{ label: "Listings", data }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { precision:0 } }
+      }
+    }
+  });
+}
+
+function applyFilter() {
+  const term = byId("filterInput").value.toLowerCase().trim();
+  state.filtered = !term ? state.rows : state.rows.filter(r => {
+    const s = `${r.title} ${r.company} ${r.location} ${r.site}`.toLowerCase();
+    return s.includes(term);
+  });
+  renderTable(state.filtered);
+  byId("totalCount").textContent = state.filtered.length;
+  renderChart(state.filtered);
+  renderBadges(state.filtered);
+}
+
+async function handleSearch() {
+  const query = byId("kw").value.trim();
+  const location = byId("loc").value.trim();
+  const limit = Math.max(10, Math.min(200, parseInt(byId("limit").value || "50", 10)));
+  const serpKey = byId("serpKey").value.trim();
+  const rapidKey = byId("rapidKey").value.trim();
+  const csvFile = byId("csvFile").files?.[0];
+
+  byId("status").textContent = "Searching…";
+  byId("searchBtn").disabled = true;
+
+  const queries = [
+    `"${query}"`,              // exact keywords
+    query,                     // broad
+    `${query} vp OR "vice president" senior transformation quality` // expanded
+  ];
+  const qCombined = Array.from(new Set(queries)).join(" OR ");
+
+  let results = [];
+  // Provider 1: SerpAPI
+  if (serpKey) {
+    const serp = await searchSerpAPI({ apiKey: serpKey, query: qCombined, location, limit });
+    results = results.concat(serp);
+  }
+  // Provider 2: RapidAPI JSearch
+  if (rapidKey) {
+    const js = await searchJSearch({ apiKey: rapidKey, query: qCombined, location, limit });
+    results = results.concat(js);
+  }
+  // Fallback: CSV
+  if ((!serpKey && !rapidKey) && csvFile) {
+    const csvRows = await parseCsvFile(csvFile);
+    results = results.concat(csvRows);
+  }
+
+  // Filter to ensure relevance: require presence of key terms in title or description proxies
+  const must = ["transformation","vp","senior","quality"];
+  const filtered = results.filter(r => {
+    const s = `${r.title} ${r.company} ${r.location} ${r.site}`.toLowerCase();
+    return must.every(m => s.includes(m) || (m === "vp" && /(^|\W)(vp|vice president)(\W|$)/.test(s)));
+  });
+
+  const deduped = dedupeByUrl(filtered);
+  state.rows = deduped;
+  applyFilter();
+
+  byId("status").textContent = state.rows.length
+    ? `Found ${state.rows.length} results`
+    : `No results. Add API keys or upload a CSV to test.`;
+  byId("searchBtn").disabled = false;
+}
+
+function bindEvents() {
+  byId("searchBtn").addEventListener("click", handleSearch);
+  byId("clearBtn").addEventListener("click", () => {
+    state = { rows: [], filtered: [], chart: state.chart };
+    byId("tbody").innerHTML = "";
+    byId("totalCount").textContent = "0";
+    byId("sourceBadges").innerHTML = "";
+    if (state.chart) state.chart.destroy();
+    byId("status").textContent = "";
+    byId("filterInput").value = "";
+  });
+  byId("filterInput").addEventListener("input", () => {
+    // debounce
+    clearTimeout(window._filt);
+    window._filt = setTimeout(applyFilter, 120);
+  });
+  byId("downloadBtn").addEventListener("click", () => {
+    if (!state.rows.length) return;
+    const csv = toCsv(state.rows);
+    download("vp_transformation_listings.csv", csv);
+  });
+}
+
+document.addEventListener("DOMContentLoaded", bindEvents);
+</script>
+</body>
+</html>

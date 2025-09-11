@@ -39,7 +39,7 @@
 
   <div class="grid">
     <div class="card" id="card-gold">
-      <div class="t">Gold (XAU)</div>
+      <div class="t">Gold</div>
       <div class="spot" id="gold-spot">—</div>
       <div class="row"><span class="label">Bid</span><span class="value" id="gold-bid">—</span></div>
       <div class="row"><span class="label">Ask</span><span class="value" id="gold-ask">—</span></div>
@@ -49,7 +49,7 @@
     </div>
 
     <div class="card" id="card-silver">
-      <div class="t">Silver (XAG)</div>
+      <div class="t">Silver</div>
       <div class="spot" id="silver-spot">—</div>
       <div class="row"><span class="label">Bid</span><span class="value" id="silver-bid">—</span></div>
       <div class="row"><span class="label">Ask</span><span class="value" id="silver-ask">—</span></div>
@@ -59,7 +59,7 @@
     </div>
 
     <div class="card" id="card-platinum">
-      <div class="t">Platinum (XPT)</div>
+      <div class="t">Platinum</div>
       <div class="spot" id="platinum-spot">—</div>
       <div class="row"><span class="label">Bid</span><span class="value" id="platinum-bid">—</span></div>
       <div class="row"><span class="label">Ask</span><span class="value" id="platinum-ask">—</span></div>
@@ -69,7 +69,7 @@
     </div>
 
     <div class="card" id="card-palladium">
-      <div class="t">Palladium (XPD)</div>
+      <div class="t">Palladium</div>
       <div class="spot" id="palladium-spot">—</div>
       <div class="row"><span class="label">Bid</span><span class="value" id="palladium-bid">—</span></div>
       <div class="row"><span class="label">Ask</span><span class="value" id="palladium-ask">—</span></div>
@@ -224,7 +224,7 @@
       });
       if (timestamps.length) {
         const latest = new Date(Math.max(...timestamps.map(t => t.getTime())));
-        els.updated.textContent = `API timestamp (latest): ${latest.toLocaleString()}`;
+        els.updated.textContent = `Timestamp (latest): <b>${latest.toLocaleString()}</b>`;
       } else {
         els.updated.textContent = "No data";
       }
@@ -236,4 +236,5 @@
   </script>
 </body>
 </html>
+
 

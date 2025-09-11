@@ -1,72 +1,168 @@
-<script>
-  // === CONFIG: working window (America/Chicago) ===
-  const WORK_TZ   = "America/Chicago";
-  const WORK_DAYS = [1,2,3,4,5]; // 1=Mon ... 5=Fri
-  const START_HH  = 8;  // 08:00 local
-  const END_HH    = 18; // 18:00 (6pm) local
-  const REFRESH_MS = 20 * 60 * 1000; // 20 minutes (change as needed)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Precious Metals — Work-Hours Scheduler (Metals.Dev)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --bg:#f6f8fb; --card:#fff; --ink:#0f172a; --muted:#64748b; --ring:#e5e7eb; }
+    * { box-sizing:border-box }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:var(--bg); color:var(--ink) }
+    header { padding:28px 16px 8px; text-align:center }
+    h1 { margin:0 0 6px; font-size: clamp(20px, 3vw, 28px) }
+    .sub { color:var(--muted); font-size:14px }
+    .controls { display:flex; gap:10px; justify-content:center; align-items:center; padding:12px 16px 22px; color:var(--muted) }
+    button { border:1px solid var(--ring); background:#fff; border-radius:10px; padding:8px 10px; font:inherit; cursor:pointer }
+    button:hover { background:#f3f4f6 }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px; padding:0 16px 32px; max-width:1100px; margin:0 auto }
+    .card { background:var(--card); border:1px solid var(--ring); border-radius:16px; box-shadow:0 6px 24px rgba(0,0,0,.06); padding:18px 18px 14px; text-align:center }
+    .t { color:var(--muted); font-weight:800; font-size:12px; letter-spacing:.35px; text-transform:uppercase }
+    .spot { font-size:32px; font-weight:800; margin:10px 0 8px; line-height:1.1 }
+    .foot { text-align:center; color:var(--muted); font-size:13px; padding-bottom:24px }
+    .err { color:#b91c1c; font-weight:600 }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Live Precious Metals (USD / troy ounce)</h1>
+    <div class="sub">Auto-refresh during work hours only (America/Chicago)</div>
+  </header>
 
-  let timer = null;
+  <div class="controls">
+    <button id="refreshBtn">Refresh</button>
+    <span id="status" class="sub"></span>
+  </div>
 
-  // Use Page Visibility to avoid fetching in background tabs
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) stopScheduler();
-    else startScheduler(true); // resume and fetch immediately
-  });
+  <div class="grid">
+    <div class="card">
+      <div class="t">Gold (XAU)</div>
+      <div class="spot" id="gold">—</div>
+    </div>
+    <div class="card">
+      <div class="t">Silver (XAG)</div>
+      <div class="spot" id="silver">—</div>
+    </div>
+    <div class="card">
+      <div class="t">Platinum (XPT)</div>
+      <div class="spot" id="platinum">—</div>
+    </div>
+    <div class="card">
+      <div class="t">Palladium (XPD)</div>
+      <div class="spot" id="palladium">—</div>
+    </div>
+  </div>
 
-  function inWorkWindow(date = new Date()) {
-    // Convert to America/Chicago clock components
-    const fmt = new Intl.DateTimeFormat('en-US', {
-      timeZone: WORK_TZ, weekday: 'short', hour: '2-digit', hour12: false
+  <div class="foot" id="updated">Last updated: —</div>
+
+  <script>
+    // ================================
+    // CONFIG — working window & refresh
+    // ================================
+    const WORK_TZ   = "America/Chicago";
+    const WORK_DAYS = [1,2,3,4,5]; // Mon..Fri (0=Sun)
+    const START_HH  = 8;  // start hour (08:00 local)
+    const END_HH    = 18; // end   hour (18:00 local)
+    const REFRESH_MS = 20 * 60 * 1000; // 20 minutes; change as needed
+
+    // Metals.Dev setup (spot prices)
+    const API_KEY = "L9AYOLKN3EUUMQQ6KRAF569Q6KRAF"; // <-- replace
+    const URL = `https://api.metals.dev/v1/latest?api_key=${encodeURIComponent(API_KEY)}&currency=USD&unit=toz`;
+
+    // ================================
+    // UI helpers
+    // ================================
+    const els = {
+      status:  document.getElementById("status"),
+      updated: document.getElementById("updated"),
+      refresh: document.getElementById("refreshBtn"),
+      gold:    document.getElementById("gold"),
+      silver:  document.getElementById("silver"),
+      platinum:document.getElementById("platinum"),
+      palladium:document.getElementById("palladium"),
+    };
+
+    const fmt = n => (n==null || isNaN(n)) ? "—"
+                  : n.toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:3});
+
+    function updateStatus(text) {
+      if (els.status) els.status.textContent = text;
+    }
+
+    // ================================
+    // Work-window logic (Option A)
+    // ================================
+    let timer = null;
+
+    function getLocalParts(date = new Date()) {
+      const d1 = new Intl.DateTimeFormat('en-US', { timeZone: WORK_TZ, weekday: 'short' }).format(date); // "Mon"
+      const parts = new Intl.DateTimeFormat('en-US', { timeZone: WORK_TZ, hour: '2-digit', hour12: false }).formatToParts(date);
+      const hourStr = parts.find(p => p.type === 'hour').value; // "00".."23"
+      const map = {Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6};
+      return { w: map[d1], h: parseInt(hourStr, 10) };
+    }
+
+    function inWorkWindow(now = new Date()) {
+      const { w, h } = getLocalParts(now);
+      const isWorkday = WORK_DAYS.includes(w);
+      const inHours   = h >= START_HH && h < END_HH;
+      return isWorkday && inHours;
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) stopScheduler();
+      else startScheduler(true); // resume immediately
     });
-    // Extract weekday (Mon..Sun) and hour from formatted parts
-    const parts = fmt.formatToParts(date);
-    const wkStr = parts.find(p => p.type === 'weekday').value; // e.g., "Mon"
-    const hrStr = parts.find(p => p.type === 'hour').value;    // "00".."23"
 
-    const weekdayIdxMap = {Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6};
-    const w = weekdayIdxMap[wkStr];
-    const h = parseInt(hrStr, 10);
-
-    const isWorkday = WORK_DAYS.includes(w);
-    const inHours   = h >= START_HH && h < END_HH;
-    return isWorkday && inHours;
-  }
-
-  async function safeFetchOnce() {
-    if (!inWorkWindow()) {
-      console.log("Skipping fetch: outside working hours.");
-      updateStatus("Paused (outside working hours)");
-      return;
+    function startScheduler(immediate = false) {
+      stopScheduler();
+      if (document.hidden) return; // don't run in background tabs
+      timer = setInterval(safeFetchOnce, REFRESH_MS);
+      if (immediate) safeFetchOnce();
     }
-    updateStatus("Fetching…");
-    try {
-      await fetchPrices(); // <-- call your existing function that fetches & updates UI
-      updateStatus("");
-    } catch (e) {
-      updateStatus("Error: " + e.message);
-      console.error(e);
+    function stopScheduler() { if (timer) clearInterval(timer); timer = null; }
+
+    async function safeFetchOnce() {
+      if (!inWorkWindow()) {
+        updateStatus("Paused (outside working hours)");
+        return;
+      }
+      updateStatus("Fetching…");
+      try {
+        await fetchPrices(); // your data loader
+        updateStatus("");    // clear status
+      } catch (e) {
+        updateStatus("Error: " + e.message);
+        console.error(e);
+      }
     }
-  }
 
-  function startScheduler(immediate = false) {
-    stopScheduler();
-    if (document.hidden) return; // don't run in background
-    timer = setInterval(safeFetchOnce, REFRESH_MS);
-    if (immediate) safeFetchOnce();
-  }
+    // ================================
+    // Data loader using Metals.Dev /v1/latest
+    // (Spot only; swap internals if you later use a bid/ask provider)
+    // ================================
+    async function fetchPrices() {
+      const res = await fetch(URL, { headers: { Accept: "application/json" }, cache: "no-store" });
+      if (!res.ok) {
+        const txt = await res.text().catch(()=> "");
+        throw new Error(`HTTP ${res.status}${txt ? ` — ${txt}` : ""}`);
+      }
+      const data = await res.json();
 
-  function stopScheduler() {
-    if (timer) clearInterval(timer);
-    timer = null;
-  }
+      const m = data.metals || {};
+      els.gold.textContent     = fmt(m.gold);
+      els.silver.textContent   = fmt(m.silver);
+      els.platinum.textContent = fmt(m.platinum);
+      els.palladium.textContent= fmt(m.palladium);
 
-  // OPTIONAL: show a little status text somewhere
-  function updateStatus(text) {
-    const el = document.getElementById("status");
-    if (el) el.textContent = text;
-  }
+      const ts = data.timestamp ? new Date(data.timestamp) : new Date();
+      els.updated.textContent = `API timestamp: ${ts.toLocaleString()} • Local: ${new Date().toLocaleTimeString()}`;
+    }
 
-  // Kick off when the page loads
-  window.addEventListener("load", () => startScheduler(true));
-</script>
+    // ================================
+    // Wire up & start
+    // ================================
+    els.refresh.addEventListener("click", () => safeFetchOnce());
+    window.addEventListener("load", () => startScheduler(true));
+  </script>
+</body>
+</html>

@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Star Coins - Precious Metals Spot</title>
+  <title>Metals.Dev — Spot • Bid • Ask (Work-Hours Scheduler)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --bg:#f6f8fb; --card:#fff; --ink:#0f172a; --muted:#64748b; --ring:#e5e7eb; }
-    * { box-sizing:border-box }
+    * { box-sizing: border-box }
     body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:var(--bg); color:var(--ink) }
     header { padding:28px 16px 8px; text-align:center }
     h1 { margin:0 0 6px; font-size: clamp(20px, 3vw, 28px) }
@@ -14,18 +14,22 @@
     .controls { display:flex; gap:10px; justify-content:center; align-items:center; padding:12px 16px 22px; color:var(--muted) }
     button { border:1px solid var(--ring); background:#fff; border-radius:10px; padding:8px 10px; font:inherit; cursor:pointer }
     button:hover { background:#f3f4f6 }
-    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px; padding:0 16px 32px; max-width:1100px; margin:0 auto }
-    .card { background:var(--card); border:1px solid var(--ring); border-radius:16px; box-shadow:0 6px 24px rgba(0,0,0,.06); padding:18px 18px 14px; text-align:center }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:16px; padding:0 16px 32px; max-width:1200px; margin:0 auto }
+    .card { background:var(--card); border:1px solid var(--ring); border-radius:16px; box-shadow:0 6px 24px rgba(0,0,0,.06); padding:18px 18px 14px }
     .t { color:var(--muted); font-weight:800; font-size:12px; letter-spacing:.35px; text-transform:uppercase }
     .spot { font-size:32px; font-weight:800; margin:10px 0 8px; line-height:1.1 }
+    .row { display:flex; justify-content:space-between; font-size:14px; margin:4px 0 }
+    .label { color:var(--muted) }
+    .value { font-variant-numeric: tabular-nums }
+    .ok { color:#065f46 } .bad { color:#b91c1c }
     .foot { text-align:center; color:var(--muted); font-size:13px; padding-bottom:24px }
     .err { color:#b91c1c; font-weight:600 }
   </style>
 </head>
 <body>
   <header>
-    <h1>Star Coins - Precious Metals (USD / troy ounce)</h1>
-    <div class="sub">Auto-refresh during work hours only (America/Chicago)</div>
+    <h1>Live Precious Metals (Metals.Dev)</h1>
+    <div class="sub">Auto-refresh during work hours only • America/Chicago • USD / toz</div>
   </header>
 
   <div class="controls">
@@ -34,21 +38,44 @@
   </div>
 
   <div class="grid">
-    <div class="card">
+    <div class="card" id="card-gold">
       <div class="t">Gold (XAU)</div>
-      <div class="spot" id="gold">—</div>
+      <div class="spot" id="gold-spot">—</div>
+      <div class="row"><span class="label">Bid</span><span class="value" id="gold-bid">—</span></div>
+      <div class="row"><span class="label">Ask</span><span class="value" id="gold-ask">—</span></div>
+      <div class="row"><span class="label">Spread</span><span class="value" id="gold-spread">—</span></div>
+      <div class="row"><span class="label">High / Low</span><span class="value" id="gold-hilo">—</span></div>
+      <div class="row"><span class="label">Change</span><span class="value" id="gold-chg">—</span></div>
     </div>
-    <div class="card">
+
+    <div class="card" id="card-silver">
       <div class="t">Silver (XAG)</div>
-      <div class="spot" id="silver">—</div>
+      <div class="spot" id="silver-spot">—</div>
+      <div class="row"><span class="label">Bid</span><span class="value" id="silver-bid">—</span></div>
+      <div class="row"><span class="label">Ask</span><span class="value" id="silver-ask">—</span></div>
+      <div class="row"><span class="label">Spread</span><span class="value" id="silver-spread">—</span></div>
+      <div class="row"><span class="label">High / Low</span><span class="value" id="silver-hilo">—</span></div>
+      <div class="row"><span class="label">Change</span><span class="value" id="silver-chg">—</span></div>
     </div>
-    <div class="card">
+
+    <div class="card" id="card-platinum">
       <div class="t">Platinum (XPT)</div>
-      <div class="spot" id="platinum">—</div>
+      <div class="spot" id="platinum-spot">—</div>
+      <div class="row"><span class="label">Bid</span><span class="value" id="platinum-bid">—</span></div>
+      <div class="row"><span class="label">Ask</span><span class="value" id="platinum-ask">—</span></div>
+      <div class="row"><span class="label">Spread</span><span class="value" id="platinum-spread">—</span></div>
+      <div class="row"><span class="label">High / Low</span><span class="value" id="platinum-hilo">—</span></div>
+      <div class="row"><span class="label">Change</span><span class="value" id="platinum-chg">—</span></div>
     </div>
-    <div class="card">
+
+    <div class="card" id="card-palladium">
       <div class="t">Palladium (XPD)</div>
-      <div class="spot" id="palladium">—</div>
+      <div class="spot" id="palladium-spot">—</div>
+      <div class="row"><span class="label">Bid</span><span class="value" id="palladium-bid">—</span></div>
+      <div class="row"><span class="label">Ask</span><span class="value" id="palladium-ask">—</span></div>
+      <div class="row"><span class="label">Spread</span><span class="value" id="palladium-spread">—</span></div>
+      <div class="row"><span class="label">High / Low</span><span class="value" id="palladium-hilo">—</span></div>
+      <div class="row"><span class="label">Change</span><span class="value" id="palladium-chg">—</span></div>
     </div>
   </div>
 
@@ -60,13 +87,22 @@
     // ================================
     const WORK_TZ   = "America/Chicago";
     const WORK_DAYS = [1,2,3,4,5]; // Mon..Fri (0=Sun)
-    const START_HH  = 8;  // start hour (08:00 local)
-    const END_HH    = 18; // end   hour (18:00 local)
-    const REFRESH_MS = 20 * 60 * 1000; // 20 minutes; change as needed
+    const START_HH  = 8;           // 08:00 local
+    const END_HH    = 18;          // 18:00 local
+    const REFRESH_MS = 20 * 60 * 1000; // 20 minutes (change as needed)
 
-    // Metals.Dev setup (spot prices)
+    // Metals.Dev Spot endpoint (per metal) — includes bid/ask/high/low/change
+    // Docs: https://api.metals.dev/v1/metal/spot?api_key=...&metal=gold&currency=USD
     const API_KEY = "L9AYOLKN3EUUMQQ6KRAF569Q6KRAF"; // <-- replace
-    const URL = `https://api.metals.dev/v1/latest?api_key=${encodeURIComponent(API_KEY)}&currency=USD&unit=toz`;
+    const BASE = "https://api.metals.dev/v1/metal/spot";
+    const CURRENCY = "USD";
+
+    const METALS = [
+      { key: "gold",     name: "gold"     },
+      { key: "silver",   name: "silver"   },
+      { key: "platinum", name: "platinum" },
+      { key: "palladium",name: "palladium"}
+    ];
 
     // ================================
     // UI helpers
@@ -75,17 +111,36 @@
       status:  document.getElementById("status"),
       updated: document.getElementById("updated"),
       refresh: document.getElementById("refreshBtn"),
-      gold:    document.getElementById("gold"),
-      silver:  document.getElementById("silver"),
-      platinum:document.getElementById("platinum"),
-      palladium:document.getElementById("palladium"),
     };
 
-    const fmt = n => (n==null || isNaN(n)) ? "—"
-                  : n.toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:3});
+    const fmt = (n, max=3) => (n==null || isNaN(n)) ? "—"
+                  : n.toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:max});
 
-    function updateStatus(text) {
-      if (els.status) els.status.textContent = text;
+    function setCard(prefix, r) {
+      const price = r.price, bid = r.bid, ask = r.ask;
+      const spread = (bid!=null && ask!=null) ? (ask - bid) : null;
+      const bps = (spread!=null && price) ? (spread/price)*10000 : null;
+
+      document.getElementById(`${prefix}-spot`).textContent = fmt(price);
+      document.getElementById(`${prefix}-bid`).textContent  = fmt(bid);
+      document.getElementById(`${prefix}-ask`).textContent  = fmt(ask);
+
+      const spreadEl = document.getElementById(`${prefix}-spread`);
+      if (spread!=null) {
+        spreadEl.textContent = `${fmt(spread,4)}${bps?` (${bps.toFixed(1)} bps)`:''}`;
+        spreadEl.className = "value " + (bps!=null && bps < 12 ? "ok" : "bad"); // green if tight
+      } else {
+        spreadEl.textContent = "—";
+        spreadEl.className = "value";
+      }
+
+      const hiloEl = document.getElementById(`${prefix}-hilo`);
+      hiloEl.textContent = (r.high!=null && r.low!=null) ? `${fmt(r.high)} / ${fmt(r.low)}` : "—";
+
+      const chgEl = document.getElementById(`${prefix}-chg`);
+      const chg = (r.change!=null) ? (r.change>0?"+":"") + r.change.toFixed(2) : null;
+      const chgPct = (r.change_percent!=null) ? ` (${r.change_percent.toFixed(2)}%)` : "";
+      chgEl.textContent = (chg==null && !chgPct) ? "—" : (chg ?? "—") + chgPct;
     }
 
     // ================================
@@ -94,28 +149,26 @@
     let timer = null;
 
     function getLocalParts(date = new Date()) {
-      const d1 = new Intl.DateTimeFormat('en-US', { timeZone: WORK_TZ, weekday: 'short' }).format(date); // "Mon"
+      const wkStr = new Intl.DateTimeFormat('en-US', { timeZone: WORK_TZ, weekday: 'short' }).format(date); // "Mon"
       const parts = new Intl.DateTimeFormat('en-US', { timeZone: WORK_TZ, hour: '2-digit', hour12: false }).formatToParts(date);
-      const hourStr = parts.find(p => p.type === 'hour').value; // "00".."23"
+      const hrStr = parts.find(p => p.type === 'hour').value; // "00".."23"
       const map = {Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6};
-      return { w: map[d1], h: parseInt(hourStr, 10) };
+      return { w: map[wkStr], h: parseInt(hrStr, 10) };
     }
 
     function inWorkWindow(now = new Date()) {
       const { w, h } = getLocalParts(now);
-      const isWorkday = WORK_DAYS.includes(w);
-      const inHours   = h >= START_HH && h < END_HH;
-      return isWorkday && inHours;
+      return WORK_DAYS.includes(w) && h >= START_HH && h < END_HH;
     }
 
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) stopScheduler();
-      else startScheduler(true); // resume immediately
+      else startScheduler(true);
     });
 
     function startScheduler(immediate = false) {
       stopScheduler();
-      if (document.hidden) return; // don't run in background tabs
+      if (document.hidden) return;
       timer = setInterval(safeFetchOnce, REFRESH_MS);
       if (immediate) safeFetchOnce();
     }
@@ -128,42 +181,58 @@
       }
       updateStatus("Fetching…");
       try {
-        await fetchPrices(); // your data loader
-        updateStatus("");    // clear status
+        await refreshAll();
+        updateStatus("");
       } catch (e) {
         updateStatus("Error: " + e.message);
         console.error(e);
       }
     }
 
-    // ================================
-    // Data loader using Metals.Dev /v1/latest
-    // (Spot only; swap internals if you later use a bid/ask provider)
-    // ================================
-    async function fetchPrices() {
-      const res = await fetch(URL, { headers: { Accept: "application/json" }, cache: "no-store" });
-      if (!res.ok) {
-        const txt = await res.text().catch(()=> "");
-        throw new Error(`HTTP ${res.status}${txt ? ` — ${txt}` : ""}`);
-      }
-      const data = await res.json();
+    function updateStatus(text) { if (els.status) els.status.textContent = text; }
 
-      const m = data.metals || {};
-      els.gold.textContent     = fmt(m.gold);
-      els.silver.textContent   = fmt(m.silver);
-      els.platinum.textContent = fmt(m.platinum);
-      els.palladium.textContent= fmt(m.palladium);
-
-      const ts = data.timestamp ? new Date(data.timestamp) : new Date();
-      els.updated.textContent = `API timestamp: ${ts.toLocaleString()} • Local: ${new Date().toLocaleTimeString()}`;
+    // ================================
+    // Data loader — Metals.Dev Spot (per metal)
+    // ================================
+    async function fetchSpot(metal) {
+      const url = `${BASE}?api_key=${encodeURIComponent(API_KEY)}&metal=${encodeURIComponent(metal)}&currency=${encodeURIComponent(CURRENCY)}`;
+      const res = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
+      if (!res.ok) throw new Error(`${metal} HTTP ${res.status}`);
+      const j = await res.json();
+      if (j.status !== "success") throw new Error(`${metal}: ${j.error_message || "API error"}`);
+      return j;
     }
 
-    // ================================
+    async function refreshAll() {
+      const results = await Promise.allSettled(METALS.map(m => fetchSpot(m.name)));
+      const timestamps = [];
+      results.forEach((res, i) => {
+        const key = METALS[i].key;
+        if (res.status === "fulfilled") {
+          const r = res.value?.rate || {};
+          setCard(key, r);
+          const ts = res.value.timestamp ? new Date(res.value.timestamp) : new Date();
+          timestamps.push(ts);
+        } else {
+          document.getElementById(`${key}-spot`).textContent = "—";
+          document.getElementById(`${key}-bid`).textContent = "—";
+          document.getElementById(`${key}-ask`).textContent = "—";
+          document.getElementById(`${key}-spread`).textContent = "Error";
+          document.getElementById(`${key}-hilo`).textContent = "—";
+          document.getElementById(`${key}-chg`).textContent = res.reason?.message || "Error";
+        }
+      });
+      if (timestamps.length) {
+        const latest = new Date(Math.max(...timestamps.map(t => t.getTime())));
+        els.updated.textContent = `API timestamp (latest): ${latest.toLocaleString()}`;
+      } else {
+        els.updated.textContent = "No data";
+      }
+    }
+
     // Wire up & start
-    // ================================
     els.refresh.addEventListener("click", () => safeFetchOnce());
     window.addEventListener("load", () => startScheduler(true));
   </script>
 </body>
 </html>
-
